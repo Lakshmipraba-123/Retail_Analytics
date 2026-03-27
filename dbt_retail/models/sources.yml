@@ -1,0 +1,41 @@
+version: 2
+
+sources:
+  - name: analytics
+    database: RETAIL_ANALYTICS
+    schema: ANALYTICS
+    tables:
+      - name: fact_orders
+        description: "All order line items — centre of the Star Schema"
+        columns:
+          - name: order_id
+            description: "Unique order identifier"
+          - name: product_id
+            description: "Foreign key to dim_products"
+      - name: dim_products
+        description: "Product dimension — all product attributes"
+        columns:
+          - name: product_id
+            description: "Primary key"
+            tests:
+              - unique
+              - not_null
+
+models:
+  - name: category_revenue
+    description: "Revenue aggregated by product category"
+    columns:
+      - name: category
+        tests:
+          - unique
+          - not_null
+      - name: total_revenue_usd
+        tests:
+          - not_null
+
+  - name: product_performance
+    description: "Sales performance per product"
+    columns:
+      - name: product_name
+        tests:
+          - not_null

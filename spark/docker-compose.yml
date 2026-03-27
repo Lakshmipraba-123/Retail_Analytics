@@ -1,0 +1,13 @@
+services:
+
+  spark:
+    image: apache/spark-py
+    container_name: spark-master
+    user: root
+    ports:
+      - "8081:8080"
+      - "4040:4040"
+    volumes:
+      - C:\retail_analytics\spark\jobs:/opt/spark-jobs
+      - C:\retail_analytics\data\processed:/opt/data
+    command: bash -c "pip install pandas --quiet && tail -f /dev/null"

@@ -1,0 +1,94 @@
+
+pipeline {
+
+    agent any
+
+    // Environment variables available to all stages
+    environment {
+        PYTHON      = "python"
+        PROJECT_DIR = "C:\\retail_analytics"
+    }
+
+    stages {
+
+        // ── STAGE 1: Test ─────────────────────────────────
+        stage("Test") {
+            steps {
+                echo "Running unit tests..."
+                bat """
+                    cd ${PROJECT_DIR}
+                    ${PYTHON} -m pytest tests/ -v --tb=short
+                """
+            }
+            post {
+                failure {
+                    echo "TESTS FAILED — deployment blocked"
+                    echo "Fix the failing tests before pushing again"
+                }
+                success {
+                    echo "All tests passed — proceeding to deploy"
+                }
+            }
+        }
+
+        // ── STAGE 2: Deploy ETL scripts ───────────────────
+        stage("Deploy ETL") {
+            steps {
+                echo "Deploying ETL scripts to Airflow..."
+                bat """
+                    docker cp ${PROJECT_DIR}\\etl\\extract_products.py retail_analytics-airflow-worker-1:/opt/airflow/etl/extract_products.py
+                    docker cp ${PROJECT_DIR}\\etl\\extract_orders.py retail_analytics-airflow-worker-1:/opt/airflow/etl/extract_orders.py
+                    docker cp ${PROJECT_DIR}\\etl\\extract_products.py retail_analytics-airflow-scheduler-1:/opt/airflow/etl/extract_products.py
+                    docker cp ${PROJECT_DIR}\\etl\\extract_orders.py retail_analytics-airflow-scheduler-1:/opt/airflow/etl/extract_orders.py
+                    docker cp ${PROJECT_DIR}\\dags\\retail_pipeline.py retail_analytics-airflow-scheduler-1:/opt/airflow/dags/retail_pipeline.py
+                """
+            }
+            post {
+                success {
+                    echo "ETL scripts deployed to Airflow successfully"
+                }
+            }
+        }
+
+        // ── STAGE 3: Run dbt ──────────────────────────────
+
+        stage("Run dbt") {
+            steps {
+                echo "Running dbt models in Snowflake..."
+                bat """
+                    cd ${PROJECT_DIR}\\dbt_retail
+                    dbt run --profiles-dir .
+                    dbt test --profiles-dir .
+                """
+            }
+            post {
+                success {
+                    echo "dbt models rebuilt successfully in Snowflake"
+                }
+                failure {
+                    echo "dbt run failed — check Snowflake connection"
+                }
+            }
+        }
+    }
+
+    // ── FINAL NOTIFICATION ────────────────────────────────
+    post {
+        success {
+            echo """
+            ============================================
+            PIPELINE COMPLETE — ALL STAGES PASSED
+            Your retail analytics platform is updated
+            ============================================
+            """
+        }
+        failure {
+            echo """
+            ============================================
+            PIPELINE FAILED — CHECK LOGS ABOVE
+            No broken code was deployed
+            ============================================
+            """
+        }
+    }
+}
