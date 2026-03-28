@@ -39,3 +39,14 @@ models:
       - name: product_name
         tests:
           - not_null
+
+version: 2
+
+sources:
+  - name: analytics
+    database: RETAIL_ANALYTICS
+    schema: ANALYTICS
+    tables:
+      - name: fact_orders        # already there
+      - name: dim_products       # already there
+      - name: ml_predictions     # add this
